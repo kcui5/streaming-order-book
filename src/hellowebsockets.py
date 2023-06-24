@@ -26,7 +26,7 @@ class Bid(Order):
         if self.price > other.price:
             return True
         if self.price == other.price:
-            return self.time < other.time
+            return self.timestamp < other.timestamp
         return False
     
     #Bid 1 is greater than Bid 2 if Bid 1 has lower priority (lower price or later timestamp if same price)
@@ -34,7 +34,7 @@ class Bid(Order):
         if self.price < other.price:
             return True
         if self.price == other.price:
-            return self.time > other.time
+            return self.timestamp > other.timestamp
         return False
     
 #A custom class for Asks with comparison for priority    
@@ -44,7 +44,7 @@ class Ask(Order):
         if self.price < other.price:
             return True
         if self.price == other.price:
-            return self.time < other.time
+            return self.timestamp < other.timestamp
         return False
     
     #Ask 1 is greater than Ask 2 if Ask 1 has lower priority (higher price or later timestamp if same price)
@@ -52,11 +52,46 @@ class Ask(Order):
         if self.price > other.price:
             return True
         if self.price == other.price:
-            return self.time > other.time
+            return self.timestamp > other.timestamp
         return False
 
-def orderInsert(Order o):
-    
+#Print current order book
+def printBook():
+    for a in asks[::-1]:
+        print("Ask", a.price, a.quantity)
+    print("-----")
+    for b in bids:
+        print("Bid", b.price, b.quantity)
+    print("---")
+
+#Insert this bid or ask order into the list of bids or asks respectively
+def orderInsert(order):
+    if type(order) == Bid:
+        orders = bids
+    elif type(order) == Ask:
+        orders = asks
+    else:
+        print("Unrecognized order type!")
+        return
+    for i in range(len(orders)):
+        ba = orders[i]
+        if ba.price == order.price:
+            if order.quantity > 0:
+                ba.quantity += order.quantity
+            elif order.quantity == 0:
+                del orders[i]
+            else:
+                print("Invalid order quantity!")
+                return
+            break
+    if order.quantity > 0:
+        bisect.insort(orders, order)
+        return
+    elif order.quantity == 0:
+        return
+    elif order.quantity < 0:
+        print("Invalid order quantity!")
+        return
 
 async def handle_binance_message(message, lastUpdateId):
     # Process the received message from the WebSocket stream
@@ -66,9 +101,12 @@ async def handle_binance_message(message, lastUpdateId):
 
     messageFinalUpdate = message["u"]
     messageTime = message["E"]
+    global firstReceivedEvent
+    global previousEventFinalUpdate
     if messageFinalUpdate < lastUpdateId:
         print("Dropped event with u ", messageFinalUpdate)
     if firstReceivedEvent:
+        # Webstream opened after snapshot accessed so events are skipped, id check will always be invalid
         if message["U"] <= lastUpdateId + 1 and messageFinalUpdate >= lastUpdateId + 1:
             print("Id check OK")
         else:
@@ -85,27 +123,15 @@ async def handle_binance_message(message, lastUpdateId):
     messageBids = message["b"]
     for price, quantity in messageBids:
         price, quantity = float(price), float(quantity)
-        Bid(price, quantity, messageTime, "Binance")
-        if price in bids:
-            if quantity > 0:
-                bids[price] += quantity
-            else:
-                del bids[price]
-        elif quantity > 0:
-            bids[price] = quantity
+        curr = Bid(price, quantity, messageTime, "Binance")
+        orderInsert(curr)
 
     messageAsks = message["a"]
     for price, quantity in messageAsks:
         price, quantity = float(price), float(quantity)
-        if price in asks:
-            if quantity > 0:
-                asks[price] += quantity
-            else:
-                del asks[price]
-        elif quantity > 0:
-            asks[price] = quantity
-    print(bids)
-    print(asks)
+        curr = Ask(price, quantity, messageTime, "Binance")
+        orderInsert(curr)
+    printBook()
 
 async def connect_websocket(lastUpdateId):
     url = " wss://stream.binance.us:9443/ws/btcusdt@depth@100ms"
@@ -126,14 +152,13 @@ def get_binance_snapshot(limit=100):
         depth_snapshot = response.json()
         for order in depth_snapshot["bids"]:
             price, quantity = order
+            price, quantity = float(price), float(quantity)
             bisect.insort(bids, Bid(price, quantity, 0, "Binance"))
         for order in depth_snapshot["asks"]:
             price, quantity = order
+            price, quantity = float(price), float(quantity)
             bisect.insort(asks, Ask(price, quantity, 0, "Binance"))
-        for b in bids:
-            print("Bid", b.price, b.quantity)
-        for a in asks:
-            print("Ask", a.price, a.quantity)
+        printBook()
         depthSnapshotLastUpdateId = depth_snapshot["lastUpdateId"]
         print("Depth snapshot last update id ", depthSnapshotLastUpdateId)
         return depthSnapshotLastUpdateId
