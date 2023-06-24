@@ -4,6 +4,13 @@ import asyncio
 import json
 import bisect
 
+"""
+Note: Due to depth snapshots having a limit on the number of price levels, a price level outside of the initial snapshot that doesn't have a quantity change 
+won't have an update in the Diff. Depth Stream. Consequently, those price levels will not be visible in the local order book even when applying all updates 
+from the Diff. Depth Stream correctly and cause the local order book to have some slight differences with the real order book. However, for most use cases the 
+depth limit of 5000 is enough to understand the market and trade effectively. --Binance Spot API Documentation
+"""
+
 #List of running Bids objects, order maintained with bisect insort
 bids = []
 #List of running Asks objects, order maintained with bisect insort
