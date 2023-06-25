@@ -3,7 +3,6 @@ import websockets
 import asyncio
 import json
 import bisect
-import datetime
 
 """
 Note: Due to depth snapshots having a limit on the number of price levels, a price level outside of the initial snapshot that doesn't have a quantity change 
@@ -21,6 +20,7 @@ asks = []
 
 firstReceivedEvent = True
 previousEventFinalUpdate = -1
+last_update_id = -1
 
 class Order:
     def __init__(self, p, q, t, src):
@@ -104,7 +104,7 @@ def orderInsert(order):
         print("Invalid order quantity!")
         return
 
-async def handle_binance_message(message, last_update_id):
+async def handle_binance_message(message):
     # Process the received message from the WebSocket stream
     print("Handling message")
     message = json.loads(message)
@@ -114,24 +114,26 @@ async def handle_binance_message(message, last_update_id):
     messageTime = message["E"]
     global firstReceivedEvent
     global previousEventFinalUpdate
-    if last_update_id != -1:
-        if messageFinalUpdate < last_update_id:
-            print("Dropped event with u ", messageFinalUpdate)
-        if firstReceivedEvent:
-            # Webstream opened after snapshot accessed so events are skipped, id check will always be invalid
-            if message["U"] <= last_update_id + 1 and messageFinalUpdate >= last_update_id + 1:
-                print("Id check OK")
-                firstReceivedEvent = False
-                previousEventFinalUpdate = messageFinalUpdate
-            else:
-                print("Id invalid!")
-        else:
-            if message["U"] == previousEventFinalUpdate + 1:
-                print("Id check OK")
-            else:
-                print("Id invalid!")
+    if messageFinalUpdate < last_update_id:
+        print("Dropped event with u ", messageFinalUpdate)
+        return
+    if firstReceivedEvent:
+        # Webstream opened after snapshot accessed so events are skipped, id check will always be invalid
+        if message["U"] <= last_update_id + 1 and messageFinalUpdate >= last_update_id + 1:
+            print("Id check OK")
+            firstReceivedEvent = False
             previousEventFinalUpdate = messageFinalUpdate
-
+        else:
+            print("Id invalid!")
+            return
+    else:
+        if message["U"] == previousEventFinalUpdate + 1:
+            print("Id check OK")
+            previousEventFinalUpdate = messageFinalUpdate
+        else:
+            print("Id invalid!")
+            return
+        
     messageBids = message["b"]
     for price, quantity in messageBids:
         price, quantity = float(price), float(quantity)
@@ -145,7 +147,7 @@ async def handle_binance_message(message, last_update_id):
         orderInsert(curr)
     printBook()
 
-async def connect_binance(last_update_id):
+async def connect_binance():
     binance_stream_url = " wss://stream.binance.us:9443/ws/btcusdt@depth@100ms"
     async with websockets.connect(binance_stream_url) as websocket:
         print("WebSocket connection established")
@@ -153,7 +155,7 @@ async def connect_binance(last_update_id):
             while True:
                 message = await websocket.recv()
                 # TODO: Open webstream before receiving snapshot
-                await handle_binance_message(message, last_update_id)
+                await handle_binance_message(message)
         except websockets.exceptions.ConnectionClosedOK:
             print("WebSocket connection closed")
 
@@ -179,5 +181,6 @@ def get_binance_snapshot(limit=100):
         print(f"Error retrieving depth snapshot. Status code: {response.status_code}")
 
 if __name__ == "__main__":
+    #TODO: get snapshot after webstream opened, incorporate snapshot accurately
     last_update_id = get_binance_snapshot(5)
-    asyncio.run(connect_binance(last_update_id))
+    asyncio.run(connect_binance())
