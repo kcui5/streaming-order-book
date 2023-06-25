@@ -147,6 +147,7 @@ async def connect_websocket(lastUpdateId):
         try:
             while True:
                 message = await websocket.recv()
+                # TODO: Open webstream before receiving snapshot
                 await handle_binance_message(message, lastUpdateId)
         except websockets.exceptions.ConnectionClosedOK:
             print("WebSocket connection closed")
