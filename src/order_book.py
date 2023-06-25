@@ -11,6 +11,10 @@ from the Diff. Depth Stream correctly and cause the local order book to have som
 depth limit of 5000 is enough to understand the market and trade effectively. --Binance Spot API Documentation
 
 --> This means if the price level moves beyond the initial snapshot's included price levels, the local order book will differ from the actual order book !!!
+
+Documentation Sources:
+https://docs.binance.us/?python#order-book-depth-diff-stream
+https://docs.cloud.coinbase.com/exchange/docs/websocket-channels
 """
 
 #List of running Bids objects, order maintained with bisect insort
@@ -110,6 +114,7 @@ async def handle_binance_message(message):
     message = json.loads(message)
     print(message)
 
+    messageFirstUpdate = message["U"]
     messageFinalUpdate = message["u"]
     messageTime = message["E"]
     global firstReceivedEvent
@@ -119,12 +124,18 @@ async def handle_binance_message(message):
         return
     if firstReceivedEvent:
         # Webstream opened after snapshot accessed so events are skipped, id check will always be invalid
-        if message["U"] <= last_update_id + 1 and messageFinalUpdate >= last_update_id + 1:
-            print("Id check OK")
+        if message["U"] <= last_update_id + 1:
+            if messageFinalUpdate >= last_update_id + 1:
+                firstReceivedEvent = False
+                previousEventFinalUpdate = messageFinalUpdate
+                print("Id check OK")
+            else:
+                print("Dropped event with u ", messageFinalUpdate)
+                return
+        else:
+            print(f"Id invalid! Missed events from {last_update_id} to {messageFirstUpdate}")
             firstReceivedEvent = False
             previousEventFinalUpdate = messageFinalUpdate
-        else:
-            print("Id invalid!")
             return
     else:
         if message["U"] == previousEventFinalUpdate + 1:
