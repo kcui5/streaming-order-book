@@ -4,6 +4,11 @@ import websockets
 import asyncio
 import json
 
+"""
+Documentation Sources:
+https://docs.cloud.coinbase.com/exchange/docs/websocket-channels
+"""
+
 async def connect_to_websocket():
     url = "wss://ws-feed.exchange.coinbase.com"
     async with websockets.connect(url) as websocket:
