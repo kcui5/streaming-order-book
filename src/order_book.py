@@ -3,6 +3,7 @@ import websockets
 import asyncio
 import json
 import bisect
+import datetime
 
 """
 Note: Due to depth snapshots having a limit on the number of price levels, a price level outside of the initial snapshot that doesn't have a quantity change 
@@ -70,17 +71,44 @@ class Ask(Order):
         return False
 
 #Print current order book
-def printBook():
-    for a in asks[::-1]:
+def printBook(printBids=bids, printAsks=asks):
+    for a in printAsks[::-1]:
         print("Ask", a.price, a.quantity)
     print("-----")
-    for b in bids:
+    for b in printBids:
         print("Bid", b.price, b.quantity)
     print("---")
 
 #Save current order book
 def saveBook():
+    data = {}
+    for a in asks:
+        data["Ask " + str(a.price)] = [a.price, a.quantity, a.timestamp, a.src]
+    for b in bids:
+        data["Bid " + str(b.price)] = [b.price, b.quantity, b.timestamp, b.src]
+    data = json.dumps(data)
+    current_time = datetime.datetime.now()
+    file_name = str(current_time.year) + " " + str(current_time.month) + " " + str(current_time.day) + " " + str(current_time.hour) + ":" + str(current_time.minute) + ".json"
+    with open(file_name, "w") as file:
+        json.dump(data, file)
     print("Saved book")
+
+#Populate bids and asks from saved order book
+def loadBook(file_name, newBids=bids, newAsks=asks):
+    with open(file_name, "r") as file:
+        data = json.load(file)
+        data = json.loads(data)
+    for order in data:
+        currOrder = data[order]
+        if order[0] == "A":
+            newAsks.append(Ask(currOrder[0], currOrder[1], currOrder[2], currOrder[3]))
+        elif order[0] == "B":
+            newBids.append(Bid(currOrder[0], currOrder[1], currOrder[2], currOrder[3]))
+        else:
+            print("Unrecognized order type: ")
+            print(order)
+            print(currOrder)
+        
 
 #Insert this bid or ask order into the list of bids or asks respectively
 def orderInsert(order):
@@ -167,10 +195,16 @@ async def connect_binance():
     async with websockets.connect(binance_stream_url) as websocket:
         print("WebSocket connection established")
         try:
+            """
             while True:
                 message = await websocket.recv()
                 # TODO: Open webstream before receiving snapshot
                 await handle_binance_message(message)
+            """
+            for i in range(10):
+                message = await websocket.recv()
+                await handle_binance_message(message)
+            saveBook()
         except websockets.exceptions.ConnectionClosedOK:
             print("WebSocket connection closed")
 
