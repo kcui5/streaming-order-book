@@ -23,14 +23,17 @@ binance_bids = []
 binance_asks = []
 #List of incoming orders ordered by timestamp
 time_orders = []
+#List of executed trades
+binance_trades = []
 
 first_received_event = True
 previous_event_final_update = -1
 last_update_id = -1
+finished_trades = False
 
-async def handle_binance_message(message):
+async def handle_binance_order_message(message):
     # Process the received message from the WebSocket stream
-    print("Handling message")
+    print("Handling order")
     message = json.loads(message)
     print(message)
 
@@ -80,9 +83,18 @@ async def handle_binance_message(message):
         time_orders.append(curr)
     printBook(binance_bids, binance_asks)
 
-async def connect_binance():
-    binance_stream_url = " wss://stream.binance.us:9443/ws/btcusdt@depth@100ms"
-    async with websockets.connect(binance_stream_url) as websocket:
+async def handle_binance_trade_message(message):
+    print("Handling trade")
+    message = json.loads(message)
+    print(message)
+    tradePrice = float(message["p"])
+    tradeQuantity = float(message["q"])
+    tradeTime = float(message["T"])
+    curr = Trade(tradePrice, tradeQuantity, tradeTime, "Binance")
+    binance_trades.append(curr)
+
+async def connect_binance(url, t):
+    async with websockets.connect(url) as websocket:
         print("WebSocket connection established")
         try:
             """
@@ -91,11 +103,19 @@ async def connect_binance():
                 # TODO: Open webstream before receiving snapshot
                 await handle_binance_message(message)
             """
-            for i in range(10):
-                message = await websocket.recv()
-                await handle_binance_message(message)
-            saveBook(binance_bids, binance_asks)
-            saveTimeOrders(time_orders)
+            global finished_trades
+            if t == "order":
+                while not finished_trades:
+                    message = await websocket.recv()
+                    await handle_binance_order_message(message)
+                saveBook(binance_bids, binance_asks)
+                saveTimeOrders(time_orders)
+            elif t == "trade":
+                for i in range(10):
+                    message = await websocket.recv()
+                    await handle_binance_trade_message(message)
+                finished_trades = True
+                saveTrades(binance_trades)
         except websockets.exceptions.ConnectionClosedOK:
             print("WebSocket connection closed")
 
@@ -122,7 +142,15 @@ def get_binance_snapshot(limit=100):
     else:
         print(f"Error retrieving depth snapshot. Status code: {response.status_code}")
 
+async def main():
+    binance_order_stream_url = "wss://stream.binance.us:9443/ws/btcusdt@depth@100ms"
+    binance_trade_stream_url = "wss://stream.binance.us:9443/ws/btcusdt@trade"
+    order_task = asyncio.create_task(connect_binance(binance_order_stream_url, "order"))
+    trade_task = asyncio.create_task(connect_binance(binance_trade_stream_url, "trade"))
+    await asyncio.gather(order_task, trade_task)
+
 if __name__ == "__main__":
     #TODO: get snapshot after webstream opened, incorporate snapshot accurately
     last_update_id = get_binance_snapshot(5)
-    asyncio.run(connect_binance())
+    asyncio.run(main())
+    

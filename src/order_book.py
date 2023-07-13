@@ -52,7 +52,25 @@ def printBook(print_bids, print_asks):
     print("-----")
     for b in print_bids:
         print("Bid", b.price, b.quantity)
-    print("---")
+    print("-----")
+
+def printTimeOrders(orders):
+    for o in orders:
+        if type(o) == Ask:
+            print("Ask", o.price, o.quantity, o.timestamp)
+        elif type(o) == Bid:
+            print("Bid", o.price, o.quantity, o.timestamp)
+
+def printTrades(trades):
+    for t in trades:
+        print("Trade: ", t.price, t.quantity, t.timestamp, "*****")
+
+def printSeq(seq):
+    for s in seq:
+        if type(s) == Bid or type(s) == Ask:
+            printTimeOrders([s])
+        elif type(s) == Trade:
+            printTrades([s])
 
 #Save current order book
 def saveBook(save_bids, save_asks):
@@ -64,11 +82,13 @@ def saveBook(save_bids, save_asks):
     data = json.dumps(data)
     current_time = datetime.datetime.now()
     file_name = str(current_time.year) + " " + str(current_time.month) + " " + str(current_time.day) + " " + str(current_time.hour) + ":" + str(current_time.minute) + ".json"
+    file_name = "../logs/" + file_name
     with open(file_name, "w") as file:
         json.dump(data, file)
     print("Saved book")
 
 def saveTimeOrders(save_orders):
+    save_orders.sort(key=lambda x: x.timestamp)
     data = {}
     for o in save_orders:
         if type(o) == Ask:
@@ -80,6 +100,7 @@ def saveTimeOrders(save_orders):
     data = json.dumps(data)
     current_time = datetime.datetime.now()
     file_name = str(current_time.year) + " " + str(current_time.month) + " " + str(current_time.day) + " " + str(current_time.hour) + ":" + str(current_time.minute) + " time.json"
+    file_name = "../logs/" + file_name
     with open(file_name, "w") as file:
         json.dump(data, file)
     print("Saved time orders")
@@ -144,3 +165,48 @@ def orderInsert(order, bids, asks):
     elif order.quantity < 0:
         print("Invalid order quantity!")
         return
+
+class Trade:
+    def __init__(self, p, q, t, src):
+        self.price = p
+        self.quantity = q
+        self.timestamp = t
+        self.src = src
+
+def saveTrades(trades):
+    data = {}
+    for t in trades:
+        data["Trade " + str(t.price)] = [t.price, t.quantity, t.timestamp, t.src]
+    data = json.dumps(data)
+    current_time = datetime.datetime.now()
+    file_name = str(current_time.year) + " " + str(current_time.month) + " " + str(current_time.day) + " " + str(current_time.hour) + ":" + str(current_time.minute) + " trades.json"
+    file_name = "../logs/" + file_name
+    with open(file_name, "w") as file:
+        json.dump(data, file)
+    print("Saved trades")
+
+def loadTrades(file_name, trades):
+    with open(file_name, "r") as file:
+        data = json.load(file)
+        data = json.loads(data)
+    for trade in data:
+        currTrade = data[trade]
+        trades.append(Trade(currTrade[0], currTrade[1], currTrade[2], currTrade[3]))
+
+def getTimeOrderSequence(orders, trades, seq):
+    """Given a time ordered list of orders and trades, merge them into one time ordered list into seq"""
+    orders, trades = orders[:], trades[:]
+    while orders or trades:
+        if orders and trades:
+            if orders[0].timestamp <= trades[0].timestamp:
+                seq.append(orders[0])
+                orders.pop(0)
+            else:
+                seq.append(trades[0])
+                trades.pop(0)
+        elif orders:
+            seq.extend(orders)
+            break
+        elif trades:
+            seq.extend(trades)
+            break
