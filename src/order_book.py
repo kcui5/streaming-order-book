@@ -78,6 +78,10 @@ def printBook():
         print("Bid", b.price, b.quantity)
     print("---")
 
+#Save current order book
+def saveBook():
+    print("Saved book")
+
 #Insert this bid or ask order into the list of bids or asks respectively
 def orderInsert(order):
     if type(order) == Bid:
