@@ -3,7 +3,7 @@ from order_book import *
 timeOrders = []
 trades = []
 seq = []
-date = "7 14 12:17"
+date = "7 14 12:53"
 loadTimeOrders(f"../logs/2023 {date} time.json", timeOrders)
 loadTrades(f"../logs/2023 {date} trades.json", trades)
 
@@ -95,4 +95,5 @@ else:
     print("Correct computation")
 total_correct = correct_positive + correct_negative
 print("Total correct: ", total_correct)
-print("Percent correct: ", total_correct / total)
+print("Out of :", total)
+print("Percent correct: ", 100*total_correct / total, "%")
