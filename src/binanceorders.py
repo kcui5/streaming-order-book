@@ -90,7 +90,8 @@ async def handle_binance_trade_message(message):
     tradePrice = float(message["p"])
     tradeQuantity = float(message["q"])
     tradeTime = float(message["T"])
-    curr = Trade(tradePrice, tradeQuantity, tradeTime, "Binance")
+    buyerMM = message["m"]
+    curr = Trade(tradePrice, tradeQuantity, tradeTime, "Binance", buyerMM)
     binance_trades.append(curr)
 
 async def connect_binance(url, t):
@@ -111,7 +112,7 @@ async def connect_binance(url, t):
                 saveBook(binance_bids, binance_asks)
                 saveTimeOrders(time_orders)
             elif t == "trade":
-                for i in range(10):
+                for i in range(100):
                     message = await websocket.recv()
                     await handle_binance_trade_message(message)
                 finished_trades = True

@@ -167,16 +167,21 @@ def orderInsert(order, bids, asks):
         return
 
 class Trade:
-    def __init__(self, p, q, t, src):
+    def __init__(self, p, q, t, src, buyerMM):
         self.price = p
         self.quantity = q
         self.timestamp = t
         self.src = src
+        self.type = ""
+        if buyerMM:
+            self.type = "S"
+        else:
+            self.type = "B"
 
 def saveTrades(trades):
     data = {}
     for t in trades:
-        data["Trade " + str(t.price)] = [t.price, t.quantity, t.timestamp, t.src]
+        data["Trade " + str(t.price)] = [t.price, t.quantity, t.timestamp, t.src, t.type]
     data = json.dumps(data)
     current_time = datetime.datetime.now()
     file_name = str(current_time.year) + " " + str(current_time.month) + " " + str(current_time.day) + " " + str(current_time.hour) + ":" + str(current_time.minute) + " trades.json"
@@ -191,7 +196,13 @@ def loadTrades(file_name, trades):
         data = json.loads(data)
     for trade in data:
         currTrade = data[trade]
-        trades.append(Trade(currTrade[0], currTrade[1], currTrade[2], currTrade[3]))
+        buyOrSell = None
+        if currTrade[4] == "B":
+            buyOrSell = False
+        elif currTrade[4] == "S":
+            buyOrSell = True
+        trades.append(Trade(currTrade[0], currTrade[1], currTrade[2], currTrade[3], buyOrSell))
+    trades.sort(key = lambda x: x.timestamp)
 
 def getTimeOrderSequence(orders, trades, seq):
     """Given a time ordered list of orders and trades, merge them into one time ordered list into seq"""
