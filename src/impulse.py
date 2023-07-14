@@ -1,34 +1,61 @@
 from order_book import *
 
-#myBids = []
-#myAsks = []
 timeOrders = []
 trades = []
 seq = []
-#loadBook("2023 7 13 12:39.json", myBids, myAsks)
-loadTimeOrders("../logs/2023 7 13 14:4 time.json", timeOrders)
-loadTrades("../logs/2023 7 13 14:4 trades.json", trades)
-#printBook(myBids, myAsks)
-printTimeOrders(timeOrders)
-printTrades(trades)
+loadTimeOrders("../logs/2023 7 13 23:41 time.json", timeOrders)
+loadTrades("../logs/2023 7 13 23:41 trades.json", trades)
 
-print(len(timeOrders))
-print(len(trades))
 getTimeOrderSequence(timeOrders, trades, seq)
-print("---")
-printSeq(seq)
-print(len(seq))
 
-def validateTimeOrder():
+def validateTimeOrder(seq):
     prev_time = 0
-    for o in timeOrders:
-        if type(o) == Bid:
-            if o.timestamp < prev_bid_time:
-                print("Invalid!")
-            prev_bid_time = o.timestamp
-        elif type(o) == Ask:
-            if o.timestamp < prev_ask_time:
-                print("Invalid!")
-            prev_ask_time = o.timestamp
+    for s in seq:
+        if s.timestamp < prev_time:
+            print("Invalid time order!")
+            return
+        prev_time = s.timestamp
+    print("Valid time order!")
 
-#validateTimeOrder()
+validateTimeOrder(seq)
+printSeq(seq)
+print("***********")
+running_sum = 0
+orders_seen = 0
+bids = []
+asks = []
+trade_impulse = 0
+for i in range(len(seq) - 1):
+    s = seq[i]
+    n = seq[i + 1]
+    if type(s) == Bid:
+        orderInsert(s, bids, asks)
+        running_sum += s.quantity
+        orders_seen += 1
+    elif type(s) == Ask:
+        orderInsert(s, bids, asks)
+        running_sum += s.quantity
+        orders_seen += 1
+    elif type(s) == Trade:
+        if not bids or not asks:
+            continue
+        best_bid = bids[0]
+        best_ask = asks[0]
+        spread = best_bid.price - best_ask.price
+        order_size_average = running_sum / orders_seen
+        trade_quantity = s.quantity
+        trade_impulse = (spread * trade_quantity) / order_size_average
+        print(trade_impulse)
+        if type(n) == Ask:
+            if trade_impulse < 0:
+                print("Correct negative impulse")
+            elif trade_impulse > 0:
+                print("Incorrect positive impulse")
+        elif type(n) == Bid:
+            if trade_impulse < 0:
+                print("Incorrect negative impulse")
+            elif trade_impulse > 0:
+                print("Correct positive impulse")
+        elif type(n) == Trade:
+            print("Trade next")
+        

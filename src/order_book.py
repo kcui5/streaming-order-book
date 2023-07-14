@@ -88,7 +88,6 @@ def saveBook(save_bids, save_asks):
     print("Saved book")
 
 def saveTimeOrders(save_orders):
-    save_orders.sort(key=lambda x: x.timestamp)
     data = {}
     for o in save_orders:
         if type(o) == Ask:
@@ -135,6 +134,7 @@ def loadTimeOrders(file_name, orders):
             print("Unrecognized order type: ")
             print(order)
             print(currOrder)
+    orders.sort(key = lambda x: x.timestamp)
 
 #Insert this bid or ask order into the list of bids or asks respectively
 def orderInsert(order, bids, asks):
