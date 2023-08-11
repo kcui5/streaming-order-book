@@ -3,6 +3,7 @@ import websockets
 import asyncio
 import json
 import bisect
+import time
 
 """
 Note: Due to depth snapshots having a limit on the number of price levels, a price level outside of the initial snapshot that doesn't have a quantity change 
@@ -31,7 +32,10 @@ class Order:
         self.price = p
         self.quantity = q
         self.timestamp = t
+        self.processed_timestamp = int(round(time.time() * 1000))
+        self.latency = self.processed_timestamp - self.timestamp
         self.src = src
+
 
 #A custom class for Bids with comparison for priority
 class Bid(Order):
@@ -72,10 +76,10 @@ class Ask(Order):
 #Print current order book
 def printBook():
     for a in asks[::-1]:
-        print("Ask", a.price, a.quantity)
+        print("Ask", a.price, a.quantity, a.latency)
     print("-----")
     for b in bids:
-        print("Bid", b.price, b.quantity)
+        print("Bid", b.price, b.quantity, b.latency)
     print("---")
 
 #Insert this bid or ask order into the list of bids or asks respectively
@@ -179,11 +183,11 @@ def get_binance_snapshot(limit=100):
         for order in depth_snapshot["bids"]:
             price, quantity = order
             price, quantity = float(price), float(quantity)
-            bisect.insort(bids, Bid(price, quantity, 0, "Binance"))
+            orderInsert(Bid(price, quantity, 0, "Binance"))
         for order in depth_snapshot["asks"]:
             price, quantity = order
             price, quantity = float(price), float(quantity)
-            bisect.insort(asks, Ask(price, quantity, 0, "Binance"))
+            orderInsert(Ask(price, quantity, 0, "Binance"))
         printBook()
         depthSnapshotLastUpdateId = depth_snapshot["lastUpdateId"]
         print("Depth snapshot last update id ", depthSnapshotLastUpdateId)
