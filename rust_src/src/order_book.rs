@@ -99,13 +99,6 @@ pub fn print_book<T: CompareOrder>(bids: Vec<T>, asks: Vec<T>) {
     }
 }
 
-fn main() {
-    let o = Order::create(123.3, 2.0, "2023", "Bid");
-    println!("Order {} {} {} {}", o.price, o.quantity, o.timestamp, o.order_type);
-
-    let mut bids: Vec<Order> = vec![];
-    let mut asks: Vec<Order> = vec![];
-
-    bids.push(o);
-    print_book(bids, asks);
+pub fn print_order(o: Order) {
+    println!("Order {} {} {} {}", o.get_price(), o.get_quantity(), o.get_timestamp(), o.get_order_type());
 }
