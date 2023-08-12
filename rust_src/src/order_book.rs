@@ -1,4 +1,4 @@
-trait CompareOrder {
+pub trait CompareOrder {
     fn create(p: f64, q: f64, t: &str, ot: &str) -> Order;
     fn get_price(&self) -> f64;
     fn get_quantity(&self) -> f64;
@@ -8,7 +8,7 @@ trait CompareOrder {
     fn greater_than(&self, other: &Self) -> bool;
 }
 
-struct Order {
+pub struct Order {
     price: f64,
     quantity: f64,
     timestamp: String,
@@ -89,7 +89,7 @@ impl CompareOrder for Order {
     }
 }
 
-fn print_book<T: CompareOrder>(bids: Vec<T>, asks: Vec<T>) {
+pub fn print_book<T: CompareOrder>(bids: Vec<T>, asks: Vec<T>) {
     for a in asks.iter() {
         println!("{} {} {}", a.get_order_type(), a.get_price(), a.get_quantity());
     }

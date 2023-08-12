@@ -1,5 +1,5 @@
 import json
-import datetime
+import time
 import bisect
 
 class Order:
@@ -7,7 +7,7 @@ class Order:
         self.price = p
         self.quantity = q
         self.timestamp = t
-        self.processed_timestamp = int(round(datetime.time() * 1000))
+        self.processed_timestamp = int(round(time.time() * 1000))
         self.latency = self.processed_timestamp - self.timestamp
         self.src = src
 
