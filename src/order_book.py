@@ -2,28 +2,6 @@ import json
 import datetime
 import bisect
 
-"""
-Note: Due to depth snapshots having a limit on the number of price levels, a price level outside of the initial snapshot that doesn't have a quantity change 
-won't have an update in the Diff. Depth Stream. Consequently, those price levels will not be visible in the local order book even when applying all updates 
-from the Diff. Depth Stream correctly and cause the local order book to have some slight differences with the real order book. However, for most use cases the 
-depth limit of 5000 is enough to understand the market and trade effectively. --Binance Spot API Documentation
-
---> This means if the price level moves beyond the initial snapshot's included price levels, the local order book will differ from the actual order book !!!
-
-Documentation Sources:
-https://docs.binance.us/?python#order-book-depth-diff-stream
-https://docs.cloud.coinbase.com/exchange/docs/websocket-channels
-"""
-
-#List of running Bids objects, order maintained with bisect insort
-bids = []
-#List of running Asks objects, order maintained with bisect insort
-asks = []
-
-firstReceivedEvent = True
-previousEventFinalUpdate = -1
-last_update_id = -1
-
 class Order:
     def __init__(self, p, q, t, src):
         self.price = p
